@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xadrez 3D - Projeto Computação Gráfica</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome para Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Carregamento síncrono das bibliotecas 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen overflow-hidden flex flex-col font-sans select-none">
+
+    <!-- Header / Navbar Topo -->
+    <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-6 py-3 flex justify-between items-center z-10 shadow-lg">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-indigo-600 rounded-lg shadow-md shadow-indigo-500/20">
+                <i class="fa-solid me-1 fa-chess-king text-xl text-white"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg leading-tight tracking-wide bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">Xadrez 3D WebGL</h1>
+                <p class="text-xs text-slate-400">Projeto de Computação Gráfica</p>
+            </div>
+        </div>
+
+        <!-- Seleção de Estilo/Skin -->
+        <div class="flex items-center gap-2 bg-slate-800/80 p-1.5 rounded-lg border border-slate-700">
+            <span class="text-xs font-semibold text-slate-400 px-2 flex items-center gap-1">
+                <i class="fa-solid fa-palette text-indigo-400"></i> Estilo:
+            </span>
+            <select id="skinSelector" class="bg-slate-900 text-xs font-medium border border-slate-700 rounded px-2 py-1 focus:outline-none focus:border-indigo-500 text-slate-200 cursor-pointer">
+                <option value="classic">Clássico (Madeira & Ébano)</option>
+                <option value="cyberpunk">Cyberpunk Neon</option>
+                <option value="glass">Cristal & Vidro</option>
+                <option value="metallic">Ouro & Prata Metalizado</option>
+            </select>
+        </div>
+
+        <!-- Indicador de Turno -->
+        <div class="flex items-center gap-3 bg-slate-800/80 border border-slate-700/80 px-4 py-1.5 rounded-full shadow-inner">
+            <span class="text-xs font-medium text-slate-400">Turno Atual:</span>
+            <div id="turnBadge" class="flex items-center gap-2 font-bold text-sm text-slate-900 bg-amber-100 px-3 py-0.5 rounded-full shadow-sm transition-all duration-300">
+                <span id="turnDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+                <span id="turnText">BRANCAS</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ÁREA PRINCIPAL -->
+    <main class="flex-1 relative flex overflow-hidden">
+        
+        <!-- Alerta de Xeque / Fim de Jogo -->
+        <div id="bannerAlert" class="absolute top-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-all duration-500 transform -translate-y-12 opacity-0">
+            <div id="bannerContent" class="bg-red-600/90 text-white font-extrabold text-lg px-8 py-2.5 rounded-full shadow-2xl backdrop-blur-md tracking-wider flex items-center gap-3 border border-red-400/50">
+                <i class="fa-solid fa-triangle-exclamation text-xl animate-bounce"></i>
+                <span id="bannerText">XEQUE!</span>
+            </div>
+        </div>
+
+        <!-- Canvas 3D (Com dimensões mínimas para garantir renderização) -->
+        <div id="canvas-container" class="flex-1 h-full cursor-grab active:cursor-grabbing relative min-w-[300px]"></div>
+
+        <!-- Histórico de Jogadas -->
+        <aside class="w-72 bg-slate-900/90 border-l border-slate-800 backdrop-blur-md flex flex-col z-10 shadow-2xl">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                <h2 class="font-semibold text-sm flex items-center gap-2 text-slate-300">
+                    <i class="fa-solid fa-scroll text-indigo-400"></i> Histórico de Jogadas
+                </h2>
+                <span id="moveCount" class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700">0 lances</span>
+            </div>
+            
+            <div id="moveLog" class="flex-1 overflow-y-auto p-3 space-y-1 text-xs font-mono select-text">
+                <div class="text-slate-500 italic text-center py-4">Aguardando o primeiro movimento...</div>
+            </div>
+
+            <!-- Botões de Ação na barra lateral -->
+            <div class="p-3 border-t border-slate-800 bg-slate-900/50 space-y-2">
+                <button id="btnFlip" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium py-2 px-3 rounded-lg border border-slate-700 flex items-center justify-center gap-2 transition-colors shadow">
+                    <i class="fa-solid fa-rotate"></i> Girar Câmera 180°
+                </button>
+                <button id="btnReset" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-colors shadow shadow-indigo-600/30">
+                    <i class="fa-solid fa-arrow-rotate-left"></i> Reiniciar Partida
+                </button>
+            </div>
+        </aside>
+
+        <!-- Controles da Câmera (Ajuda) -->
+        <div class="absolute bottom-4 left-4 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-lg p-3 text-xs text-slate-400 z-10 space-y-1 shadow-lg pointer-events-none">
+            <p class="font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
+                <i class="fa-solid fa-gamepad text-indigo-400"></i> Controles de Visão:
+            </p>
+            <p><i class="fa-solid fa-computer-mouse text-slate-300 me-1"></i> <strong>Arrastar Mouse:</strong> Orbitar câmera</p>
+            <p><i class="fa-solid fa-arrows-up-down-left-right text-slate-300 me-1"></i> <strong>Setas Teclado:</strong> Girar câmera suavemente</p>
+            <p><i class="fa-solid fa-magnifying-glass text-slate-300 me-1"></i> <strong>Scroll:</strong> Zoom in/out</p>
+        </div>
+    </main>
+
+    <!-- MODAL DE PROMOÇÃO DE PEÃO -->
+    <div id="promotionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl max-w-sm w-full text-center transform scale-95 transition-transform duration-300">
+            <h3 class="text-xl font-bold text-slate-100 mb-1">Promoção de Peão!</h3>
+            <p class="text-xs text-slate-400 mb-6">Escolha qual peça deseja substituir pelo seu peão:</p>
+            <div class="grid grid-cols-4 gap-3">
+                <button data-piece="Q" class="promo-btn bg-slate-800 hover:bg-indigo-600 border border-slate-700 hover:border-indigo-500 rounded-xl p-4 flex flex-col items-center gap-2 transition-all">
+                    <i class="fa-solid fa-chess-queen text-3xl text-amber-400"></i>
+                    <span class="text-xs font-semibold">Dama</span>
+                </button>
+                <button data-piece="R" class="promo-btn bg-slate-800 hover:bg-indigo-600 border border-slate-700 hover:border-indigo-500 rounded-xl p-4 flex flex-col items-center gap-2 transition-all">
+                    <i class="fa-solid fa-chess-rook text-3xl text-slate-300"></i>
+                    <span class="text-xs font-semibold">Torre</span>
+                </button>
+                <button data-piece="B" class="promo-btn bg-slate-800 hover:bg-indigo-600 border border-slate-700 hover:border-indigo-500 rounded-xl p-4 flex flex-col items-center gap-2 transition-all">
+                    <i class="fa-solid fa-chess-bishop text-3xl text-emerald-400"></i>
+                    <span class="text-xs font-semibold">Bispo</span>
+                </button>
+                <button data-piece="N" class="promo-btn bg-slate-800 hover:bg-indigo-600 border border-slate-700 hover:border-indigo-500 rounded-xl p-4 flex flex-col items-center gap-2 transition-all">
+                    <i class="fa-solid fa-chess-knight text-3xl text-cyan-400"></i>
+                    <span class="text-xs font-semibold">Cavalo</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script principal -->
+    <script src="script.js"></script>
+</body>
+</html>

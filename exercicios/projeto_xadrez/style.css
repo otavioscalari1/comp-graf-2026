@@ -1,0 +1,14 @@
+/* Custom Scrollbar no Log */
+#moveLog::-webkit-scrollbar {
+    width: 5px;
+}
+#moveLog::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.6);
+}
+#moveLog::-webkit-scrollbar-thumb {
+    background: rgba(51, 65, 85, 0.8);
+    border-radius: 4px;
+}
+#moveLog::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.8);
+}
